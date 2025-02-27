@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use structify::FromHashMap;
+use doless::FromHashMap;
 
 #[derive(FromHashMap, Debug)]
 struct Car {
