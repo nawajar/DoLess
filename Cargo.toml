@@ -1,8 +1,13 @@
 [package]
 name = "doless"
 version = "0.1.0"
-edition = "2021"
-
+edition = "2025"
+description = "A Rust macro to simplify struct mapping and function utilities."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-username/doless"
+keywords = ["macro", "procedural", "struct", "mapping", "timing"]
+categories = ["development-tools", "rust-patterns"]
+readme = "README.md"
 
 [dependencies]
 syn = { version = "2", features = ["derive", "parsing"] }
