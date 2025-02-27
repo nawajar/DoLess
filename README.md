@@ -16,7 +16,7 @@ Add `DoLess` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-doless = "0.1.0"
+doless = "0.2.0"
 ```
 
 ## 👺 Usage
