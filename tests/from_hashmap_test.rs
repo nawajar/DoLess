@@ -34,4 +34,3 @@ fn test_from_hashmap() {
     assert_eq!(car.details.name, "v8engine");
     assert_eq!(car.details.description, "500hp");
 }
-
