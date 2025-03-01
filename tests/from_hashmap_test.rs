@@ -43,14 +43,13 @@ fn test_from_hashmap() {
 }
 
 #[test]
-fn test_from_vec() {
+fn test_from_hashmap_vec() {
     let mut data = HashMap::new();
     data.insert("vec_string".to_string(), "hello, world, rust".to_string());
     data.insert("vec_u8".to_string(), "1, 2, 999".to_string());
     data.insert("vec_option".to_string(), "1,2,,".to_string());
     let car_details: VecStruct = VecStruct::from(data);
 
-    println!("{:?}", car_details);
     assert_eq!(car_details.vec_string.len(), 3);
     assert_eq!(car_details.vec_string, vec!["hello", "world", "rust"]);
     assert_eq!(car_details.vec_u8, vec![1, 2]); //u8 overflow

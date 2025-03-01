@@ -4,19 +4,19 @@
 
 ## 🚀 Features
 - 🏢 **Auto-implements `From<HashMap<String, String>>`** for structs.
-- 🔄 **Supports common Rust types** (`String`, `u8`, `u16`, `i32`, `f64`, `Option`, etc.).
+- 🔄 **Supports common Rust types** (`String`, `u8`, `u16`, `i32`, `f64`, `Option`, `Vec<T>`, `Vec<Option<T>>`, etc.).
 - ❌ **Compile-time errors for unsupported types**.
 - ✅ **Default values for missing fields**.
 - ⚙ **Supports nested struct parsing** with `.` notation.
 
 ---
 
-## 📦 Installation
+## 🛆 Installation
 Add `DoLess` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-doless = "0.2.0"
+doless = "0.3.0"
 ```
 
 ## 👺 Usage
@@ -43,7 +43,6 @@ fn main() {
 ```
 
 ### Nested Struct Support
-
 ```rust
 use doless::FromHashMap;
 use std::collections::HashMap;
@@ -77,16 +76,35 @@ fn main() {
 }
 ```
 
+### Support for `Vec<T>` and `Vec<Option<T>>`
+```rust
+use doless::FromHashMap;
+use std::collections::HashMap;
+
+#[derive(FromHashMap, Debug)]
+struct ItemCollection {
+    items: Vec<String>,         // ✅ Supports Vec<String>
+    numbers: Vec<u8>,           // ✅ Supports Vec<u8>
+    optional_items: Vec<Option<String>>,  // ✅ Supports Vec<Option<T>>
+}
+
+fn main() {
+    let mut data = HashMap::new();
+    data.insert("items".to_string(), "apple, banana, orange".to_string());
+    data.insert("numbers".to_string(), "1,2,3".to_string());
+    data.insert("optional_items".to_string(), "apple,,orange".to_string()); // Empty string = None
+
+    let collection: ItemCollection = ItemCollection::from(data);
+    println!("{:?}", collection);
+}
+```
+
 ### Expected Output
 ```rust
-Car {
-    model: "GT-R",
-    brand: "Nissan",
-    number: 8,
-    details: CarDetails {
-        name: "Skyline",
-        description: "Legendary Sports Car"
-    }
+ItemCollection {
+    items: ["apple", "banana", "orange"],
+    numbers: [1, 2, 3],
+    optional_items: [Some("apple"), None, Some("orange")],
 }
 ```
 
@@ -100,6 +118,7 @@ Car {
 ### ⚙ Roadmap
 - [x] Basic primitive types mapping
 - [x] Nested struct support
+- [x] `Vec<T>` and `Vec<Option<T>>` support
 - [ ] Custom conversion support
 - [ ] Error handling improvements
 
