@@ -2,10 +2,11 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Type, TypePath};
 
+
 pub(crate) fn derive_from_hashmap_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
-
+   
     let fields = if let Data::Struct(data) = &input.data {
         if let Fields::Named(fields) = &data.fields {
             fields
@@ -21,12 +22,39 @@ pub(crate) fn derive_from_hashmap_impl(input: TokenStream) -> TokenStream {
         let field_str = field_name.as_ref().unwrap().to_string();
         let ty = &f.ty;
 
-        // Handle nested struct types
+        // vec
         if let Type::Path(TypePath { path, .. }) = ty {
             let type_name = quote!(#path).to_string();
 
 
-            //TODO
+            if type_name.starts_with("Vec <") {
+                if type_name.contains("Option") {
+                    return quote! {
+                        #field_name: fields.get(#field_str)
+                            .map(|val| val.split(',')
+                                .map(|s| {
+                                    let trimmed = s.trim();
+                                    if trimmed.is_empty() {
+                                        None
+                                    } else {
+                                        trimmed.parse().ok()
+                                    }
+                                })
+                                .collect::<Vec<Option<_>>>()
+                            ).unwrap_or_default(),
+                    };
+                } else {
+                    return quote! {
+                        #field_name: fields.get(#field_str)
+                            .map(|val| val.split(',')
+                                .filter_map(|s| s.trim().parse().ok())
+                                .collect()
+                            ).unwrap_or_default(),
+                    };
+                }
+            }
+
+            //TODO nested struct
             if !["String", "u8", "u16", "i32", "f64", "bool", "Option"]
                 .iter()
                 .any(|&t| type_name.contains(t))
