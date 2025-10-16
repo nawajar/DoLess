@@ -7,12 +7,10 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/nawajar/DoLess"
 keywords = [
     "macro",
-    "procedural",
     "struct",
     "mapping",
     "timing",
     "cache",
-    "cache function",
 ]
 categories = ["development-tools", "rust-patterns"]
 readme = "README.md"
