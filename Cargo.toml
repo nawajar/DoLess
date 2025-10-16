@@ -1,6 +1,6 @@
 [package]
 name = "doless"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 description = "A Rust macro to simplify struct mapping , injects cache lookup logic directly into your functions ,and function utilities."
 license = "MIT OR Apache-2.0"
