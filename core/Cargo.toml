@@ -1,9 +1,13 @@
 [package]
 name = "doless_core"
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
-description = "Core runtime utilities for doless (e.g. DoLessCache, traits, helpers)"
+description = "A Rust macro to simplify struct mapping and function utilities."
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/nawajar/DoLess"
+keywords = ["macro", "procedural", "struct", "mapping", "timing"]
+categories = ["development-tools", "rust-patterns"]
+readme = "README.md"
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
