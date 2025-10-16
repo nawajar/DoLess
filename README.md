@@ -56,7 +56,7 @@ You decide when to cache the result:
 
 ```toml
 [dependencies]
-doless = "0.3.0"
+doless = "0.4.0"
 ```
 
 Includes:
