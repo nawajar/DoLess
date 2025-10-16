@@ -1,6 +1,6 @@
 [package]
 name = "doless"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "A Rust macro to simplify struct mapping , injects cache lookup logic directly into your functions ,and function utilities."
 license = "MIT OR Apache-2.0"
@@ -15,9 +15,14 @@ keywords = [
 categories = ["development-tools", "rust-patterns"]
 readme = "README.md"
 [dependencies]
-doless_core = { version = "0.4.0" }
-doless_macros = { version = "0.4.0" }
+doless_core = { version = "0.4.2" }
+doless_macros = { version = "0.4.2" }
+
+# doless_core = { path = "./core" }
+# doless_macros = { path = "./macros" }
 
 [dev-dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
+async-trait = "0.1"
+tokio = { version = "1.43.0", features = ["full"] }

@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use doless::cache_it;
+use doless::{cache::AsyncCache, cache_it};
 use doless_core::cache::Cache;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -47,6 +47,53 @@ impl Cache for DummyCache {
     }
 }
 
+pub struct RedisCache {
+    store: Arc<Mutex<HashMap<String, String>>>,
+}
+impl RedisCache {
+    pub fn new() -> Self {
+        Self {
+            store: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+impl Default for RedisCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait::async_trait]
+impl AsyncCache for RedisCache {
+    async fn get<T>(&self, key: &str) -> Option<T>
+    where
+        T: DeserializeOwned + Clone + Send + Sync,
+    {
+        let guard = self.store.lock().ok()?;
+        serde_json::from_str(guard.get(key)?).ok()
+    }
+
+    async fn set<T>(&self, key: &str, value: &T)
+    where
+        T: Serialize + Send + Sync,
+    {
+        if let Ok(json) = serde_json::to_string(value) {
+            if let Ok(mut map) = self.store.lock() {
+                map.insert(key.to_string(), json);
+            }
+        }
+    }
+
+    async fn set_with_ttl<T>(&self, key: &str, value: &T, ttl_secs: u64)
+    where
+        T: Serialize + Send + Sync,
+    {
+        //TODO
+        self.set(key, value).await;
+    }
+}
+
 //
 // -- Macro-driven test functions
 //
@@ -83,6 +130,12 @@ fn get_user_custom_var(redis: &impl Cache) -> Option<User> {
 /// 🧩 Runtime dynamic key expression
 #[cache_it(key = format!("user:{}", id))]
 fn get_user_custom_dynamic_key(id: u32, cache: &impl Cache) -> Option<User> {
+    cache_data
+}
+
+/// 🧩 async
+#[cache_it(key = "user")]
+async fn get_user_async(cache: &impl AsyncCache) -> Option<User> {
     cache_data
 }
 
@@ -163,4 +216,14 @@ fn test_dynamic_key_cache_hit() {
 fn test_dynamic_key_miss_returns_none() {
     let cache = DummyCache::new();
     assert!(get_user_custom_dynamic_key(10, &cache).is_none());
+}
+
+#[tokio::test]
+async fn test_async_user_cache_hit_returns_data() {
+    let cache = RedisCache::new();
+    let user = default_user(1, "jeff", Some("jeffy"));
+    cache.set("user", &user).await;
+
+    let cached = get_user_async(&cache).await.expect("expected cached user");
+    assert_eq!(cached, user);
 }
