@@ -1,5 +1,5 @@
-use doless::FromHashMap;
 use std::collections::HashMap;
+use doless_macros::FromHashMap;
 
 #[derive(FromHashMap, Debug)]
 struct Car {
@@ -53,5 +53,8 @@ fn test_from_hashmap_vec() {
     assert_eq!(car_details.vec_string.len(), 3);
     assert_eq!(car_details.vec_string, vec!["hello", "world", "rust"]);
     assert_eq!(car_details.vec_u8, vec![1, 2]); //u8 overflow
-    assert_eq!(car_details.vec_option, vec![Some(String::from("1")), Some(String::from("2")), None, None]);
+    assert_eq!(
+        car_details.vec_option,
+        vec![Some(String::from("1")), Some(String::from("2")), None, None]
+    );
 }

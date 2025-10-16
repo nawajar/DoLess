@@ -1,48 +1,75 @@
-# DoLess - Procedural Macro for Struct Mapping 🦀
+# DoLess 🦀 — Procedural Macros for Data Mapping and Caching
 
-`DoLess` is a Rust **procedural macro** that allows structs to be initialized from a `HashMap<String, String>`. It automatically maps field values, providing **type-safe conversions**.
+`DoLess` is a Rust library offering **procedural macros** that simplify both
+**data-to-struct mapping** and **cache integration** patterns.
 
-## 🚀 Features
-- 🏢 **Auto-implements `From<HashMap<String, String>>`** for structs.
-- 🔄 **Supports common Rust types** (`String`, `u8`, `u16`, `i32`, `f64`, `Option`, `Vec<T>`, `Vec<Option<T>>`, etc.).
-- ❌ **Compile-time errors for unsupported types**.
-- ✅ **Default values for missing fields**.
-- ⚙ **Supports nested struct parsing** with `.` notation.
+It provides two main features:
+
+- 🧩 **`#[derive(FromHashMap)]`** — auto-generates a type-safe
+  `From<HashMap<String, String>>` implementation for simple and nested structs.
+- ⚡ **`#[cache_it(...)]`** — injects cache lookup logic directly into your functions.
 
 ---
 
-## 🛆 Installation
-Add `DoLess` to your `Cargo.toml`:
+## 🚀 Features
+
+### 🧩 Mapping Features
+- ✅ Auto-maps from `HashMap<String, String>`
+- 🔢 Supports types: `String`, numeric primitives, `bool`, `Option<T>`
+- ➕ Supports lists: `Vec<T>`, `Vec<Option<T>>`
+- 🪆 Nested structs with dot notation (`details.name`)
+- ⚙ Defaults for missing fields
+
+### ⚡ Cache Macro Features
+- 📦 Add `#[cache_it(...)]` to perform cache lookups automatically
+- 🗝 Configurable options:
+  - `key = "some:key"`
+  - `key = format!("user:{}", id)`
+  - `var = redis` — custom cache instance name
+  - `name = cached_data` — custom binding name
+- 🔄 Works with any cache backend implementing the `Cache` trait
+- 🚀 Async-aware — supports async functions automatically
+
+---
+
+## 🧠 Design Intent: Lookup-Only by Default
+
+The `#[cache_it]` macro performs **non-intrusive cache lookups**:
+
+```rust
+let cache_data = cache.get::<_>(&key);
+```
+
+That’s it — no automatic writes.  
+You decide when to cache the result:
+
+- ✅ Cache only successful responses  
+- ✅ Skip caching transient or sensitive data  
+- ✅ Apply your own TTLs or invalidation logic  
+
+> This intentional design keeps `DoLess` flexible and predictable.  
+> You’re in control of every cache write.
+
+---
+
+## 📦 Installation
 
 ```toml
 [dependencies]
 doless = "0.3.0"
 ```
 
-## 👺 Usage
+Includes:
+- `doless_core` — Cache trait, shared utilities
+- `doless_macros` — Procedural macros
+- `doless` — Public re-export crate
 
-### Basic Struct Mapping
-```rust
-use doless::FromHashMap;
-use std::collections::HashMap;
+---
 
-#[derive(FromHashMap, Debug, PartialEq)]
-struct Car {
-    model: String,
-    year: u16,
-}
+## ✨ Usage Guide
 
-fn main() {
-    let mut data = HashMap::new();
-    data.insert("model".to_string(), "GT-R".to_string());
-    data.insert("year".to_string(), "2023".to_string());
+### 🧩 FromHashMap Example
 
-    let car: Car = Car::from(data);
-    println!("Car: Model = {}, Year = {}", car.model, car.year);
-}
-```
-
-### Nested Struct Support
 ```rust
 use doless::FromHashMap;
 use std::collections::HashMap;
@@ -51,8 +78,8 @@ use std::collections::HashMap;
 struct Car {
     model: String,
     brand: String,
-    number: u8,
-    details: CarDetails,  // ✅ Nested Struct Support
+    details: CarDetails,
+    tags: Vec<String>,
 }
 
 #[derive(FromHashMap, Debug)]
@@ -63,66 +90,200 @@ struct CarDetails {
 
 fn main() {
     let mut data = HashMap::new();
-    data.insert("model".to_string(), "GT-R".to_string());
-    data.insert("brand".to_string(), "Nissan".to_string());
-    data.insert("number".to_string(), "8".to_string());
-
-    // ✅ Nested Fields with Prefix Notation
-    data.insert("details.name".to_string(), "Skyline".to_string());
-    data.insert("details.description".to_string(), "Legendary Sports Car".to_string());
+    data.insert("model".into(), "GT-R".into());
+    data.insert("brand".into(), "Nissan".into());
+    data.insert("details.name".into(), "Skyline".into());
+    data.insert("details.description".into(), "Legendary Sports Car".into());
+    data.insert("tags".into(), "fast,collectible,cool".into());
 
     let car: Car = Car::from(data);
-    println!("{:?}", car);
+    println!("{:#?}", car);
 }
 ```
 
-### Support for `Vec<T>` and `Vec<Option<T>>`
+---
+
+### ⚡ Cache Macro Example
+
+#### Step 1: Implement the `Cache` Trait
+
 ```rust
-use doless::FromHashMap;
+use doless_core::cache::Cache;
+use serde::{de::DeserializeOwned, Serialize};
+use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
-#[derive(FromHashMap, Debug)]
-struct ItemCollection {
-    items: Vec<String>,         // ✅ Supports Vec<String>
-    numbers: Vec<u8>,           // ✅ Supports Vec<u8>
-    optional_items: Vec<Option<String>>,  // ✅ Supports Vec<Option<T>>
+#[derive(Clone, Default)]
+struct DummyCache {
+    store: Arc<Mutex<HashMap<String, String>>>,
 }
 
-fn main() {
-    let mut data = HashMap::new();
-    data.insert("items".to_string(), "apple, banana, orange".to_string());
-    data.insert("numbers".to_string(), "1,2,3".to_string());
-    data.insert("optional_items".to_string(), "apple,,orange".to_string()); // Empty string = None
+impl Cache for DummyCache {
+    fn get<T: DeserializeOwned + Clone>(&self, key: &str) -> Option<T> {
+        let guard = self.store.lock().ok()?;
+        serde_json::from_str(guard.get(key)?).ok()
+    }
 
-    let collection: ItemCollection = ItemCollection::from(data);
-    println!("{:?}", collection);
+    fn set<T: Serialize>(&self, key: &str, value: &T) {
+        if let Ok(json) = serde_json::to_string(value) {
+            if let Ok(mut map) = self.store.lock() {
+                map.insert(key.to_string(), json);
+            }
+        }
+    }
+
+    fn set_with<T: Serialize>(&self, key: &str, value: &T, extra: u32) {
+        // Default: fallback to simple `set`
+        // `extra` can be interpreted as TTL (in seconds) in real caches
+        println!("Setting with TTL={extra}s");
+        self.set(key, value);
+    }
 }
 ```
 
-### Expected Output
+---
+
+#### Step 2: Lookup Function with Optional Write
+
 ```rust
-ItemCollection {
-    items: ["apple", "banana", "orange"],
-    numbers: [1, 2, 3],
-    optional_items: [Some("apple"), None, Some("orange")],
+use doless::cache_it;
+use doless_core::cache::Cache;
+
+#[cache_it(key = "user:list")]
+fn get_users(cache: &impl Cache) -> Vec<String> {
+    // 👇 `cache_data` is automatically generated by the macro
+    let cache_data: Option<Vec<String>> = cache_data;
+
+    // Return directly if cache hit
+    if let Some(users) = cache_data {
+        return users;
+    }
+
+    // Miss: compute, store, and return
+    let result = vec!["alice".into(), "bob".into()];
+    cache.set("user:list", &result);
+    result
 }
 ```
 
 ---
 
-## 🚀 Why Use DoLess?
-- **Simple & Lightweight** — No runtime dependencies, just pure Rust.
-- **Declarative API** — Uses procedural macros to generate efficient `From<HashMap<String, String>>` implementations.
-- **Type-Safe & Extensible** — Ensures correct conversions and supports nesting.
+### Dynamic Key Example
 
-### ⚙ Roadmap
-- [x] Basic primitive types mapping
-- [x] Nested struct support
-- [x] `Vec<T>` and `Vec<Option<T>>` support
-- [ ] Custom conversion support
-- [ ] Error handling improvements
+```rust
+#[cache_it(key = format!("user:{}", id))]
+fn get_user(id: u32, cache: &impl Cache) -> Option<User> {
+    cache_data
+}
+```
+
+### Custom Variable Names
+
+```rust
+#[cache_it(var = redis, key = "session:active", name = cached_session)]
+fn get_active_session(redis: &impl Cache) -> Option<Session> {
+    cached_session
+}
+```
 
 ---
 
-**Happy coding! ✨**
+## ⏱ Extending Cache: TTL and Custom `set_with`
 
+In `DoLess`, the `Cache` trait supports an overridable method for extra control:
+
+```rust
+fn set_with<T: Serialize>(&self, key: &str, value: &T, extra: u32) {
+    // Use `extra` for TTL, versioning, etc.
+    self.set(key, value);
+}
+```
+
+You can override it to implement **time-to-live (TTL)** or other advanced behaviors.
+
+Example extended cache:
+
+```rust
+use std::time::{Duration, Instant};
+
+struct TTLCache {
+    data: Arc<Mutex<HashMap<String, (String, Instant)>>>,
+}
+
+impl Cache for TTLCache {
+    fn get<T: DeserializeOwned + Clone>(&self, key: &str) -> Option<T> {
+        let mut guard = self.data.lock().ok()?;
+        let (json, expiry) = guard.get(key)?.clone();
+
+        // Remove expired entries
+        if Instant::now() > expiry {
+            guard.remove(key);
+            return None;
+        }
+
+        serde_json::from_str(&json).ok()
+    }
+
+    fn set<T: Serialize>(&self, key: &str, value: &T) {
+        self.set_with(key, value, 60);
+    }
+
+    fn set_with<T: Serialize>(&self, key: &str, value: &T, ttl_secs: u32) {
+        if let Ok(json) = serde_json::to_string(value) {
+            let expiry = Instant::now() + Duration::from_secs(ttl_secs as u64);
+            if let Ok(mut map) = self.data.lock() {
+                map.insert(key.to_string(), (json, expiry));
+            }
+        }
+    }
+}
+```
+
+Now you can call:
+
+```rust
+cache.set_with("user:1", &user, 120); // cache for 2 minutes
+```
+
+---
+
+## 🧪 Testing
+
+Full examples and integration tests live under:
+- [`tests/cache_it_test.rs`](./tests/cache_it_test.rs)
+- [`tests/from_hashmap_test.rs`](./tests/from_hashmap_test.rs)
+
+Run with:
+```bash
+cargo test
+```
+
+---
+
+## 🧭 Roadmap
+
+| Feature                                |   Status   |
+| -------------------------------------- | :--------: |
+| FromHashMap with nested struct support |     ✅      |
+| Vec and Vec<Option<T>> handling        |     ✅      |
+| Cache attribute macro                  |     ✅      |
+| Async auto-detection                   |     ✅      |
+| TTL + extended cache (via set_with)    | ✅ (manual) |
+| Custom derive hooks                    | 🚧 Planned  |
+| Error diagnostics                      | 🚧 Planned  |
+
+---
+
+## 📦 Project Structure
+
+| Crate           | Purpose                                            |
+| --------------- | -------------------------------------------------- |
+| `doless_core`   | Core cache trait and foundational types            |
+| `doless_macros` | Macro implementations for data mapping and caching |
+| `doless`        | Unified public API layer                           |
+
+---
+
+**DoLess — Write Less, Do More.**
+
+🦀 Rust procedural macros that make your data + cache handling simpler, safer, and smarter.
